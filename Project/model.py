@@ -8,6 +8,8 @@ import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 import pandas as pd
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
+import logging 
+logging.basicConfig(level=logging.INFO)
 
 
 
@@ -15,15 +17,23 @@ app = Flask(__name__, static_folder='frontend')
 CORS(app)  # Ensure CORS is enabled
 
 # Load the model
-model_path = 'C:/Users/sanja/OneDrive/Desktop/UNI/COURSES/3rd YEAR/SEM 6/IR/Project/model/model_optimal.h5'
+model_path = "C:\\Users\\Ajith Rahul\\Downloads\\IR PROJECT\\model_optimal.h5"
 model = load_model(model_path)
-weights_path = 'C:/Users/sanja/OneDrive/Desktop/UNI/COURSES/3rd YEAR/SEM 6/IR/Project/model/model_weights.weights.h5'
+weights_path = "C:\\Users\\Ajith Rahul\\Downloads\\IR PROJECT\\model_weights.weights.h5"
 model.load_weights(weights_path)
 
 #Action Model
-action_model_path = 'C:/Users/sanja/OneDrive/Desktop/UNI/COURSES/3rd YEAR/SEM 6/IR/Project/model/my_model_action_recognition.h5'
+action_model_path = "C:\\Users\\Ajith Rahul\\Downloads\\IR PROJECT\\my_model_action_recognition.h5"
 action_model = load_model(action_model_path)
 action_model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Energy levels for actions based on the attached graphs
+action_energy_levels = {
+    'high_intensity': (0.7, 1.0),  # High energy level range
+    'medium_intensity': (0.4, 0.7),  # Medium energy level range
+    'low_intensity': (0, 0.4)  # Low energy level range
+}
+
 
 
 client_id = '1a955744b8014ad6b1e80a0d7501b081'
@@ -40,7 +50,11 @@ playlist_ids = {
         'disgust': 'https://open.spotify.com/playlist/37i9dQZF1EIUDtahSUEMYS?si=6c06a6505c8e4d62',
         'neutral': 'https://open.spotify.com/playlist/37i9dQZF1EIVVAaLvNJxGC?si=89e460a3337a47cb',
         'sad':'https://open.spotify.com/playlist/37i9dQZF1DWSqBruwoIXkA?si=4d19eedbeb33434b',
-        'happy':'https://open.spotify.com/playlist/37i9dQZF1DX9XIFQuFvzM4?si=0be74a602a4f4614'
+        'happy':'https://open.spotify.com/playlist/37i9dQZF1DX9XIFQuFvzM4?si=0be74a602a4f4614',
+        'surprised': 'https://open.spotify.com/playlist/37i9dQZF1DX9XIFQuFvzM4?si=0be74a602a4f4614',
+        'anger': 'https://open.spotify.com/playlist/37i9dQZF1EIWfUH5fvLgHm?si=4d27668ae34241ac',
+        'fear' : 'https://open.spotify.com/playlist/0J2Io2I47rfYsdir02OA3i?si=0233a9e48c5043d5'
+
         
     },
     'hindi': {
@@ -50,7 +64,11 @@ playlist_ids = {
         'disgust': 'https://open.spotify.com/playlist/4YOfhHpjPB0tq29NPpDY3F?si=67fd17b93b614754',
         'neutral': 'https://open.spotify.com/playlist/0J2Io2I47rfYsdir02OA3i?si=0233a9e48c5043d5',
         'sad':'https://open.spotify.com/playlist/4YOfhHpjPB0tq29NPpDY3F?si=67fd17b93b614754',
-        'happy' :  'https://open.spotify.com/playlist/2QnLDxeZMzIoCno54I9vKj?si=1b65c34640a341d0'
+        'happy' :  'https://open.spotify.com/playlist/2QnLDxeZMzIoCno54I9vKj?si=1b65c34640a341d0',
+        'anger': 'https://open.spotify.com/playlist/0J2Io2I47rfYsdir02OA3i?si=0233a9e48c5043d5',
+        'fear' : 'https://open.spotify.com/playlist/0J2Io2I47rfYsdir02OA3i?si=0233a9e48c5043d5',
+        'surprised' : 'https://open.spotify.com/playlist/2QnLDxeZMzIoCno54I9vKj?si=1b65c34640a341d0'
+
     },
     'tamil': {
         'Positive': 'https://open.spotify.com/playlist/2rDck89vUaM7SoGih1gzsU?si=4894c1c9791f45b1',
@@ -59,7 +77,10 @@ playlist_ids = {
         'disgust': 'https://open.spotify.com/playlist/51hmVNeZVcZQKaSecPoLs0?si=d4ad46424e194019',
         'neutral': 'https://open.spotify.com/playlist/0TOng1FTBaa6bHJcfack1S?si=9194123add144733',
         'sad':'https://open.spotify.com/playlist/51hmVNeZVcZQKaSecPoLs0?si=d4ad46424e194019',
-        'happy' :  'https://open.spotify.com/playlist/2rDck89vUaM7SoGih1gzsU?si=4894c1c9791f45b1'
+        'happy' :  'https://open.spotify.com/playlist/2rDck89vUaM7SoGih1gzsU?si=4894c1c9791f45b1',
+        'anger': 'https://open.spotify.com/playlist/0TOng1FTBaa6bHJcfack1S?si=9194123add144733',
+        'fear' : 'https://open.spotify.com/playlist/0TOng1FTBaa6bHJcfack1S?si=9194123add144733',
+        'surprised' : 'https://open.spotify.com/playlist/2rDck89vUaM7SoGih1gzsU?si=4894c1c9791f45b1'
         
     }
 }
@@ -122,6 +143,7 @@ def predict_emotions(file, language):
         img = process_image(img)
         emotion = predict_emotion_from_image(img)
         top_songs = get_songs_for_emotion(emotion.lower(), language)  # Pass the language to the function
+        logging.info(f'Predicted Emotion: {emotion}')
         return jsonify(emotion=emotion, songs=top_songs)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -147,13 +169,73 @@ def predict_actions(file):
         predicted_action = class_names[predicted_class[0]]
         
         logging.info(f"Action prediction successful: {predicted_action}")
-        return jsonify({'action': predicted_action})
+    
+         # Determine the language choice
+        language = request.form.get('language', 'English')
+        
+        # Fetch songs based on the action detected
+        top_songs = get_songs_for_action(predicted_action, language)
+        
+        return jsonify({'action': predicted_action, 'songs': top_songs})
     except Exception as e:
         logging.error(f"Error in predict_actions: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+def get_songs_for_action(action_tag, language='English', k=10):
+    language = language.lower()
+    action_tag = action_tag.lower()
     
 
+    intensity_playlist_urls = {
+        'high_intensity': {
+            'english': 'https://open.spotify.com/playlist/37i9dQZF1EIfSXQEsaH9aJ?si=984072576bee4694',
+            'hindi': 'https://open.spotify.com/playlist/37i9dQZF1DX8xfQRRX1PDm?si=3eeaf9ca1f95419d',
+            'tamil': 'https://open.spotify.com/playlist/5AqGfimYXeEtIBX6Y5N5ja?si=e1bf98cfebd84bdf'
+        },
+        'medium_intensity': {
+            'english': 'https://open.spotify.com/playlist/37i9dQZF1EIgk8T1xOAmM6?si=fe937e4d89384957',
+            'hindi': 'https://open.spotify.com/playlist/37i9dQZF1EIcv6CMutv3XL?si=78c780d10bd643b6',
+            'tamil': 'https://open.spotify.com/playlist/37i9dQZF1DXaVmfUr97Uve?si=5d88dd58f87f4371'
+        },
+        'low_intensity': {
+            'english': 'https://open.spotify.com/playlist/37i9dQZF1EQqkOPvHGajmW?si=f267a10c756b4780',
+            'hindi': 'https://open.spotify.com/playlist/37i9dQZF1DX5q67ZpWyRrZ?si=3a2ce4f5c2504f9f',
+            'tamil': 'https://open.spotify.com/playlist/1kToetbuGzM80xW1a7EoCQ?si=315eeab25ca44a17'
+        }
+    }
+    
+    # Determine intensity based on the action
+    if action_tag in ['cycling', 'dancing', 'fighting', 'running']:
+        action_intensity = 'high_intensity'
+    elif action_tag in ['clapping', 'hugging', 'laughing']:
+        action_intensity = 'medium_intensity'
+    else:  # For low intensity actions
+        action_intensity = 'low_intensity'
+
+    # Determine the playlist URL based on action intensity and language
+    playlist_url = intensity_playlist_urls[action_intensity][language]
+    playlist_id = playlist_url.split('/')[-1].split('?')[0]
+
+    songs_df = call_playlist("spotify",playlist_id)
+    if songs_df.empty:
+        return []
+
+    # Filter songs based on energy levels
+    min_energy, max_energy = action_energy_levels[action_intensity]
+    filtered_songs = songs_df[(songs_df['energy'] >= min_energy) & (songs_df['energy'] <= max_energy)]
+
+    # Conditional sampling
+    if not filtered_songs.empty:
+        sample_size = min(len(filtered_songs), k)  # Take the smaller of the two values
+        if sample_size == 0:
+            return []  # Return an empty list if there are no songs to sample
+        sorted_songs = filtered_songs.sample(n=sample_size)
+        songs_list = sorted_songs[['artist', 'track_name', 'energy']].to_dict(orient='records')
+        return songs_list
+    else:
+        # Handle the case where no songs match the filter
+        logging.info(f"No songs match the energy criteria for {action_tag}")
+        return []
 
 def correct_image_orientation(img):
     try:
