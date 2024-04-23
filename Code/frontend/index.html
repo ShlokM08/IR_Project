@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Storify</title>
+    <link rel="stylesheet" href="style.css">
+    <link href='https://unpkg.com/boxicons@2.0.9/css/boxicons.min.css' rel='stylesheet'>
+</head>
+<body>
+    <div class="bg">
+        <img src="image/icon.png" class="icon">
+    </div>
+    <div class="glass">
+        <div class="content">
+            <h1>Let the Music Mirror Your Mood!</h1>
+            <p>How would you like us to tailor your music experience today?</p>
+            <div class="options">
+                <label><input type="radio" name="musicChoice" value="emotions">Tune into my Emotions</label>
+                <label><input type="radio" name="musicChoice" value="actions">Tune into my Actions</label>
+            </div>
+            <p>Choose your preferred language for the song recommendations:</p>
+            <select name="languageChoice" class="language-dropdown">
+                <option value="english">English</option>
+                <option value="hindi">Hindi</option>
+                <option value="tamil">Tamil</option>
+            </select>
+            <p>Upload your image:</p>
+            <input type="file" name="imageFile" class="image-file-input">
+            <button type="button" class="generate-btn">Generate</button>
+            <div id="songs-container"></div> <!-- Container to display songs -->
+        </div>
+    </div>
+    <script>
+        document.querySelector('.generate-btn').addEventListener('click', function() {
+            var imageFile = document.querySelector('.image-file-input').files[0];
+            var language = document.querySelector('.language-dropdown').value;
+            var choice = document.querySelector('input[name="musicChoice"]:checked').value;
+            var formData = new FormData();
+            formData.append('imageFile', imageFile);
+            formData.append('language', language);
+            formData.append('choice', choice);
+
+            
+            const songsContainer = document.getElementById('songs-container');
+            songsContainer.innerHTML = '';
+
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Display songs if available
+                if (data.songs) {
+                    displaySongs(data.songs);
+                } else {
+                    console.error('Failed to fetch songs or predict action/emotion');
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+
+        
+        function displaySongs(songs) {
+            const songsContainer = document.getElementById('songs-container');
+            songsContainer.innerHTML = '';
+            songs.forEach(song => {
+                const songElement = document.createElement('p');
+                songElement.textContent = `Track: ${song.track_name}, Artist: ${song.artist}`;
+                songsContainer.appendChild(songElement);
+            });
+        }
+    </script>
+        
+</body>
+</html>
+
