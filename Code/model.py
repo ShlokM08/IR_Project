@@ -16,13 +16,13 @@ logging.basicConfig(level=logging.INFO)
 app = Flask(__name__, static_folder='frontend')
 CORS(app)  # Ensure CORS is enabled
 
-model_path = 'frontend/model_file/model_optimal.h5'
+model_path = 'Project/model_optimal.h5'
 model = load_model(model_path)
-weights_path = 'frontend/model_file/model_weights.weights.h5'
+weights_path = 'Project/model_weights.weights.h5'
 model.load_weights(weights_path)
 
 #Action Model
-action_model_path = 'frontend/model_file/my_model_action_recognition.h5'
+action_model_path = 'Project/my_model_action_recognition.h5'
 action_model = load_model(action_model_path)
 action_model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
